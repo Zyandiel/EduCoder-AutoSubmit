@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.auth/
+logs/*
+!logs/.gitkeep
+debug/screenshots/*
+!debug/screenshots/.gitkeep
+debug/*.html
+solutions/*/
+config.local.yaml
