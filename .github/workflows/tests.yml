@@ -1,0 +1,54 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            python: '3.11'
+          - os: windows-latest
+            python: '3.14'
+          - os: ubuntu-latest
+            python: '3.12'
+    env:
+      PYTHONUTF8: '1'
+      EDUCODER_TEST_BROWSER: chromium
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Install browser (Linux)
+        if: runner.os == 'Linux'
+        run: python -m playwright install --with-deps chromium
+      - name: Install browser (Windows)
+        if: runner.os == 'Windows'
+        run: python -m playwright install chromium
+      - name: Verify
+        run: |
+          python -m unittest discover -s tests -v
+          python main.py --help
+          python -m pip check

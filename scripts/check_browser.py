@@ -6,12 +6,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from browser.session import browser_session
 from browser.navigation import navigate
-from configuration import load_settings
+from configuration import default_config, load_settings
 from diagnostics import configure_logging, snapshot
 
 
 def main():
-    settings = load_settings(Path(__file__).resolve().parents[1] / "config.yaml")
+    settings = load_settings(default_config(Path(__file__).resolve().parents[1]))
     configure_logging(settings.root, settings.debug)
     with browser_session(settings, fresh=True, interactive=True) as (_, page):
         navigate(page, "https://www.educoder.net/", settings)

@@ -6,6 +6,20 @@ from urllib.parse import urlparse
 import yaml
 
 
+def default_config(root: Path) -> Path:
+    """优先使用本地配置，同时兼容旧版 config.yaml。"""
+    for name in ("config.local.yaml", "config.yaml"):
+        path = root / name
+        if path.is_file():
+            return path
+    return root / "config.local.yaml"
+
+
+def require_course(settings) -> None:
+    if any(token in settings.course_url for token in ("YOUR_COURSE_ID", "/xxxx/")):
+        raise ValueError("请先将本地配置的 course_url 替换为真实课程地址。")
+
+
 @dataclass(frozen=True)
 class Settings:
     root: Path
@@ -22,6 +36,8 @@ class Settings:
 
 def load_settings(path: Path) -> Settings:
     path = path.resolve()
+    if not path.is_file():
+        raise ValueError("缺少配置文件。请运行 python main.py init，或复制 config.example.yaml 为 config.local.yaml。")
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:

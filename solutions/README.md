@@ -1,5 +1,14 @@
-按作业名称建目录，每个关卡保存为 1.cpp、2.cpp、3.cpp。
+# 本地代码
 
-例如：`solutions/C++之递归函数应用/1.cpp`。
+以实训完整名称建立目录，第 N 关保存为 `N.cpp`（UTF-8）。真实解答被 Git 忽略，不随仓库提供。
 
-`run --dry-run` 会读取并上传对应代码、运行评测，但不最终提交作业。请勿将真实解答提交到公共仓库。
+```text
+solutions/
+└── 你的实训名称/
+    ├── 1.cpp
+    ├── 2.cpp
+    ├── 2.files.json
+    └── greeting.h
+```
+
+参考 [examples/solutions](../examples/solutions/) 和 [使用指南](../docs/usage.md)。示例网页路径按实际关卡修改，代码需符合题目框架。

@@ -1,0 +1,39 @@
+name: Bug report
+description: 报告运行错误或页面适配问题
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: 请提供脱敏信息，不上传 Cookie、storageState、账号密码或真实解答。
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境
+      description: Windows、Python、浏览器版本与 browser_channel。
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 命令、相关配置及页面操作，不含个人课程标识。
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: 预期与实际结果
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 脱敏日志或局部 DOM
+      description: 适配问题请提供编辑器类型、按钮文字和相关结构。
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: 信息检查
+      options:
+        - label: 我已移除凭据、个人信息和真实解答。
+          required: true

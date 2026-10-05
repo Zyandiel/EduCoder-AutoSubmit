@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="title desc">
+  <title id="title">EduCoder Helper</title>
+  <desc id="desc">A Windows browser workflow for local code: login, workspace, verify, evaluate once.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#101c32"/><stop offset="1" stop-color="#162f48"/></linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M40 0H0V40" fill="none" stroke="#cde5ff" stroke-opacity=".04"/></pattern>
+  </defs>
+  <rect width="1200" height="340" rx="20" fill="url(#bg)"/>
+  <rect width="1200" height="340" rx="20" fill="url(#grid)"/>
+  <circle cx="1140" cy="0" r="220" fill="#3a97f0" opacity=".06"/>
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <rect x="48" y="42" width="310" height="29" rx="14.5" fill="#223f59"/>
+    <circle cx="65" cy="56" r="4" fill="#67e8b9"/>
+    <text x="80" y="61" fill="#b6dcff" font-size="12" letter-spacing="1.2">BROWSER WORKFLOW · WINDOWS FIRST</text>
+    <text x="48" y="145" fill="#f4f8ff" font-size="60" font-weight="700" letter-spacing="-2">EduCoder Helper</text>
+    <text x="50" y="185" fill="#b4c9e0" font-size="23">Local code. Verified execution.</text>
+    <text x="50" y="219" fill="#86a4c2" font-size="16">Python + Playwright · Manual login · One evaluation per attempt</text>
+    <g transform="translate(49 268)" font-size="13" fill="#d1e3f5">
+      <rect width="158" height="34" rx="8" fill="#223d55"/><text x="16" y="22">Session persistence</text>
+      <rect x="170" width="138" height="34" rx="8" fill="#223d55"/><text x="186" y="22">Code read-back</text>
+      <rect x="320" width="135" height="34" rx="8" fill="#223d55"/><text x="336" y="22">Dry-run default</text>
+    </g>
+    <g transform="translate(760 82)">
+      <rect width="383" height="181" rx="13" fill="#0e1c2b" stroke="#42627f"/>
+      <path d="M0 36H383" stroke="#2b4258"/>
+      <circle cx="18" cy="18" r="4" fill="#fe847b"/><circle cx="33" cy="18" r="4" fill="#f7ca68"/><circle cx="48" cy="18" r="4" fill="#67e8b9"/>
+      <text x="72" y="22" fill="#8ba9c3" font-size="11">WORKFLOW</text>
+      <path d="M31 64V151" stroke="#3e5c76" stroke-width="2"/>
+      <g fill="#67e8b9"><circle cx="31" cy="64" r="5"/><circle cx="31" cy="93" r="5"/><circle cx="31" cy="122" r="5"/></g>
+      <circle cx="31" cy="151" r="5" fill="#75baff"/>
+      <g font-size="15" fill="#cfe1f1"><text x="50" y="69">Restore session</text><text x="50" y="98">Open pending challenge</text><text x="50" y="127">Write and verify code</text><text x="50" y="156">Evaluate once</text></g>
+      <g font-size="11"><text x="309" y="70" fill="#67e8b9">01</text><text x="309" y="99" fill="#67e8b9">02</text><text x="309" y="128" fill="#67e8b9">03</text><text x="309" y="157" fill="#75baff">04</text></g>
+    </g>
+  </g>
+</svg>

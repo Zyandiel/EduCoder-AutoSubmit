@@ -7,7 +7,7 @@ from playwright.sync_api import Error as PlaywrightError
 
 from browser.navigation import navigate
 from browser.session import browser_session, login, save_state
-from configuration import load_settings
+from configuration import default_config, load_settings, require_course
 from diagnostics import configure_logging, snapshot
 from educoder.assignments import list_assignments
 from educoder.challenges import inspect_assignment
@@ -16,9 +16,10 @@ from educoder.auto import automatic
 
 
 def parser():
-    result = argparse.ArgumentParser(description="EduCoder 本地代码助手（登录、会话管理、作业列表读取）")
-    result.add_argument("--config", type=Path, default=Path(__file__).with_name("config.yaml"))
+    result = argparse.ArgumentParser(description="EduCoder Helper：本地代码填写、回读校验与单次评测")
+    result.add_argument("--config", type=Path, default=default_config(Path(__file__).resolve().parent), help="配置路径（默认优先 config.local.yaml，兼容 config.yaml）")
     commands = result.add_subparsers(dest="command", required=True)
+    commands.add_parser("init", help="从示例创建本地配置，不覆盖已有文件")
     auth = commands.add_parser("login", help="手动登录并保存会话")
     auth.add_argument("--fresh", action="store_true", help="忽略旧会话，重新手动登录")
     inspect = commands.add_parser("inspect", help="恢复会话，手动检查课程页面并保存截图")
@@ -29,7 +30,7 @@ def parser():
     run = commands.add_parser("run", help="填写本地代码、完整回读校验并单次评测；最终提交暂未开放")
     run.add_argument("--assignment")
     run.add_argument("--dry-run", action="store_true")
-    commands.add_parser("submit", help="待第七阶段：确认评测通过后提交")
+    commands.add_parser("submit", help="保留入口：最终提交尚未开放，退出码 2")
     auto = commands.add_parser('auto', help='一键恢复登录、刷新列表、自动填写并评测本地解答')
     auto.add_argument('--check', action='store_true', help='只检查本地配置与解答，不打开网站')
     return result
@@ -38,9 +39,23 @@ def parser():
 def main(argv=None):
     args = parser().parse_args(argv)
     try:
+        if args.command == "init":
+            target = args.config.resolve()
+            if target.exists():
+                print(f"配置已存在，保留原文件：{target}")
+            else:
+                template = Path(__file__).with_name("config.example.yaml").read_text(encoding="utf-8")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                with target.open("x", encoding="utf-8") as stream:
+                    stream.write(template)
+                print(f"已创建：{target}")
+            print("填写 course_url、启用 assignments，并准备 solutions 中的本地代码后再运行。")
+            return 0
         settings = load_settings(args.config)
         configure_logging(settings.root, settings.debug)
         logging.info("dry_run=%s, debug=%s", settings.dry_run or getattr(args, "dry_run", False), settings.debug)
+        if args.command in ("list", "run", "inspect") or (args.command == "auto" and not args.check):
+            require_course(settings)
         if args.command == 'auto':
             return automatic(settings, args.config, check_only=args.check)
         if args.command == 'run':
@@ -69,8 +84,6 @@ def main(argv=None):
                             snapshot(context.pages[-1], settings.root, 'assignment-inspection-error')
                         raise
                 return 0
-            if "/xxxx/" in settings.course_url:
-                raise ValueError("请先将 config.yaml 的 course_url 替换为真实课程地址。")
             with browser_session(settings, interactive=True) as (context, page):
                 navigate(page, settings.course_url, settings)
                 print("请在浏览器确认课程页面。如登录失效，请手动登录再打开课程页面。")

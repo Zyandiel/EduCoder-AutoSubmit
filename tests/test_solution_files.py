@@ -32,11 +32,9 @@ class SolutionFilesTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 load_files(source)
 
-    def test_real_course_mapping_contains_source_and_header(self):
+    def test_example_mapping_contains_source_and_header(self):
         root = Path(__file__).resolve().parents[1]
-        source = root / 'solutions' / '面向过程编程综合练习' / '2.cpp'
-        if not source.exists():
-            self.skipTest('本地解答未随项目复制')
+        source = root / 'examples' / 'solutions' / '示例实训' / '2.cpp'
         files = load_files(source)
-        self.assertEqual([remote for remote, _ in files], ['step2/fact.cpp', 'step2/fact.h'])
+        self.assertEqual([remote for remote, _ in files], ['step2/main.cpp', 'step2/greeting.h'])
         self.assertTrue(all(path.is_file() for _, path in files))

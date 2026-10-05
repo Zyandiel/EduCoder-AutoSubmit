@@ -20,6 +20,14 @@ if not errorlevel 1 goto run
 ".venv\Scripts\python.exe" -m pip install -r requirements.txt
 if errorlevel 1 goto failed
 :run
+if exist "config.local.yaml" goto configured
+if exist "config.yaml" goto configured
+".venv\Scripts\python.exe" -X utf8 main.py init
+if errorlevel 1 goto failed
+echo Edit config.local.yaml and prepare your solutions, then run START.cmd again.
+set "result=0"
+goto end
+:configured
 ".venv\Scripts\python.exe" -X utf8 main.py auto %*
 set "result=%errorlevel%"
 echo.

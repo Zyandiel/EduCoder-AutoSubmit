@@ -1,0 +1,19 @@
+# 复制为 config.local.yaml，填写你有权访问的课程地址。
+course_url: "https://www.educoder.net/classrooms/YOUR_COURSE_ID/shixun_homework"
+solutions_dir: "./solutions"
+session_file: "./.auth/storage_state.json"
+
+# 评测会保存代码并更新平台进度；此开关禁止最终提交。
+dry_run: true
+debug: true
+headless: false
+
+# chrome / msedge 使用已安装浏览器；chromium 需 playwright install chromium。
+browser_channel: chrome
+navigation_timeout_ms: 60000
+action_timeout_ms: 15000
+
+# name 必须与 list 输出完全一致；按需添加并启用。
+assignments:
+  - name: "示例实训名称"
+    enabled: false
