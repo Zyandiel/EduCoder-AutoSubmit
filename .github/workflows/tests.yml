@@ -47,8 +47,9 @@ jobs:
       - name: Install browser (Windows)
         if: runner.os == 'Windows'
         run: python -m playwright install chromium
-      - name: Verify
-        run: |
-          python -m unittest discover -s tests -v
-          python main.py --help
-          python -m pip check
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+      - name: Check CLI
+        run: python main.py --help
+      - name: Check dependencies
+        run: python -m pip check
