@@ -14,7 +14,9 @@ class OnboardingTests(unittest.TestCase):
     def setUp(self):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name)
+        # Windows CI may return an 8.3 short path (RUNNER~1), while configuration
+        # normalizes it to the long path. Compare the same canonical directory.
+        self.root = Path(temporary.name).resolve()
         self.config = self.root / 'config.local.yaml'
         browser = patch('onboarding.ensure_browser', side_effect=lambda settings, path: settings)
         browser.start()
