@@ -1,8 +1,9 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="EduCoder Helper — local code, verified browser workflow" width="100%">
+  <img src="docs/assets/banner.svg" alt="EduCoder Helper — DeepSeek + Playwright" width="100%">
 </p>
 
 <p align="center">
+  <a href="https://github.com/Zyandiel/EduCoder-AutoSubmit/releases/latest"><img src="https://img.shields.io/github/v/release/Zyandiel/EduCoder-AutoSubmit" alt="Latest release"></a>
   <a href="https://github.com/Zyandiel/EduCoder-AutoSubmit/actions/workflows/tests.yml"><img src="https://github.com/Zyandiel/EduCoder-AutoSubmit/actions/workflows/tests.yml/badge.svg" alt="Tests"></a>
   <img src="https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white" alt="Python 3.11+">
   <img src="https://img.shields.io/badge/Platform-Windows-0078D4" alt="Windows">
@@ -10,8 +11,8 @@
 </p>
 
 <p align="center">
-  <b>将本地 C++ 代码带入 EduCoder，自动完成填写、回读校验与评测。</b><br>
-  Python + Playwright · 手动登录 · 多文件关卡 · 默认 dry-run
+  <b>配置 DeepSeek API Key、登录头歌，自动读取题目、生成代码并逐关评测。</b><br>
+  无需提前准备 CPP 文件 · 自动发现新作业 · 多文件模板 · 默认 dry-run
 </p>
 
 <p align="center">
@@ -20,24 +21,29 @@
 
 ## 它能做什么
 
-EduCoder Helper 适合已经准备好本地解答、需要在头歌平台逐关填写和评测的用户。程序通过正常浏览器操作完成重复步骤，保留代码备份和结果。
+EduCoder Helper 使用 Playwright 操作浏览器，将当前可访问的题目说明和代码模板交给 DeepSeek 生成解答，写入编辑器后逐字回读，再运行一次评测。新作业默认自动发现，不需要手动创建答案目录或维护作业名单。
 
 | 能力 | 当前支持 |
 | --- | --- |
-| 手动登录与会话恢复 | Cookie、localStorage、IndexedDB 保存与恢复 |
-| 作业与关卡读取 | 作业名称、进度、实际详情链接、关卡状态 |
-| 本地代码填写 | `N.cpp`、多文件映射、原代码备份、逐字回读校验 |
-| 自动逐关评测 | 跳过已通过关卡，每关单次评测；失败记录后继续其他作业 |
-| Windows 一键入口 | 环境检查、初始配置、运行锁、结果汇总 |
+| 首次启动引导 | API Key 配置、登录、从浏览器获取课程地址 |
+| 会话恢复与分页 | 恢复登录，读取全部作业分页，跳过已完成关卡 |
+| AI 解题 | 读取题目与模板；生成单文件或多文件解答 |
+| 在线代码校验 | 备份原代码，写入后完整回读，校验一致再评测 |
+| 失败隔离 | 每关单次评测，失败记录后继续其他作业 |
+| 本地代码模式 | 继续支持已有 `N.cpp` 与文件映射 |
 | 最终提交作业 | **暂未开放**；`submit` 返回退出码 2 |
 
-> **dry-run 仍会修改在线代码并运行评测，平台可能同步更新进度和成绩。** 它限制的是最终“提交作业”，不是只读预览。当前支持已核实的 Monaco 页面结构；其他编辑器和站点改版需要适配。
+> **dry-run 仍会修改在线代码并运行评测，平台可能同步更新进度和成绩。** 它限制的是最终“提交作业”。当前适配已核实的 Monaco 页面；缺少题目上下文、访问受限或 DOM 改版时会记录原因，不能保证任意题目都能通过。
 
 ## 快速开始
 
-需要 **Windows、Python 3.11+、Google Chrome**，以及你有权访问的 EduCoder 课程。也可在配置中选择 Edge 或 Playwright Chromium。
+需要 **Windows、Python 3.11+**、可用的 **DeepSeek API Key**，以及你有权访问的 EduCoder 课程。启动器优先使用已安装的 Chrome 或 Edge，均未安装时下载 Playwright Chromium。生成代码会使用你的 DeepSeek API 额度。
 
 ### 1. 获取项目
+
+推荐下载 [v0.3.0 源码 ZIP](https://github.com/Zyandiel/EduCoder-AutoSubmit/archive/refs/tags/v0.3.0.zip)，解压后双击 `START.cmd`。这是 Python 源码发行版，需要先安装 Python 3.11+。
+
+也可以使用 Git：
 
 ```powershell
 git clone https://github.com/Zyandiel/EduCoder-AutoSubmit.git
@@ -46,44 +52,23 @@ cd EduCoder-AutoSubmit
 
 也可使用仓库的 **Code → Download ZIP**，解压后打开文件夹。
 
-### 2. 创建配置
+### 2. 双击 START.cmd
 
-首次双击 **START.cmd**：检查 Python、准备依赖，生成 `config.local.yaml` 后退出。打开配置，替换课程地址，填写 `list` 中的完整作业名称并启用：
+启动器准备 Python 环境和依赖，然后进入首次配置引导：
 
-```yaml
-course_url: "https://www.educoder.net/classrooms/YOUR_COURSE_ID/shixun_homework"
-dry_run: true
-browser_channel: chrome
-assignments:
-  - name: "你的实训名称"
-    enabled: true
-```
+1. 按提示输入 DeepSeek API Key；输入不回显，Windows 使用当前用户的 DPAPI 加密后保存在本机。
+2. 在打开的浏览器中登录头歌、完成验证，打开目标课程的“实训作业”页面。
+3. 按终端提示确认，程序保存会话和课程地址，开始处理未完成作业。
 
-完整模板见 [config.example.yaml](config.example.yaml)。本地配置默认被 Git 忽略；旧版 `config.yaml` 仍可使用。
+**无需准备 CPP 文件，也无需编辑作业名单。** 已有课程配置和有效会话会直接复用。以后有新任务，再次双击 **START.cmd** 即可。
 
-### 3. 准备代码
+运行时请避免使用系统剪贴板、编辑自动化浏览器或切换在线文件；代码填写和回读会临时使用剪贴板，结束后恢复原文本。
 
-```text
-solutions/
-└── 你的实训名称/
-    ├── 1.cpp
-    ├── 2.cpp
-    └── 3.cpp
-```
+### 3. 查看结果
 
-第 N 关读取 `N.cpp`，代码应满足题目模板要求，可能是完整程序、函数实现或头文件。[示例目录](examples/solutions/)展示单文件和多文件布局；示例代码不是课程答案。
+终端显示当前作业、关卡和评测结果。`logs/auto-summary.json` 保存本次处理范围；`logs/run-*/report.json` 记录逐关结果，对应目录保存题目、生成代码、原代码和错误信息。
 
-### 4. 登录并运行
-
-双击 **LOGIN.cmd**，在浏览器中手动登录、完成验证，在终端输入 `save` 保存会话。然后可以读取作业名称：
-
-```powershell
-.\.venv\Scripts\python.exe main.py list
-```
-
-完成作业配置和代码准备后，再次双击 **START.cmd**。它刷新列表、处理启用且未完成的作业，并写入结果汇总。
-
-运行期间请避免编辑自动化浏览器或使用系统剪贴板；代码写入会临时使用剪贴板，结束后恢复原文本。
+AI 生成不等于评测通过。失败或超时后，本次运行不会自动反复提交同一关；修正问题后可再次启动。
 
 ## 命令一览
 
@@ -91,32 +76,33 @@ solutions/
 
 | 命令 | 作用 |
 | --- | --- |
-| `python main.py init` | 创建本地配置，保留已有文件 |
+| `python main.py start` | 首次引导，并开始自动解题与评测 |
+| `python main.py setup` | 配置或更换 API Key；课程尚未设置时引导选择 |
 | `python main.py login --fresh` | 手动重新登录并保存会话 |
 | `python main.py list` | 列出课程作业与进度 |
-| `python main.py auto --check` | 检查启用配置及现有本地代码，不打开浏览器 |
-| `python main.py auto` | 恢复登录、刷新列表、自动填写和评测 |
-| `python main.py run --assignment "实训名称" --dry-run` | 运行指定实训；需要先读取 `list` |
-| `python main.py inspect --assignment "实训名称" --enter` | 读取关卡并进入工作区，保存诊断 |
+| `python main.py auto --check` | 检查配置与 Key 是否可读取，不调用 API 或打开浏览器 |
+| `python main.py auto` | 刷新所有分页，自动处理未完成作业 |
+| `python main.py run --assignment "实训名称" --dry-run` | 刷新列表后，只处理指定实训 |
+| `python main.py auto --local` | 使用已有本地代码，处理配置中启用的作业 |
+| `python main.py inspect --assignment "实训名称" --enter` | 读取关卡、进入工作区并保存诊断 |
 
-高级配置、多文件映射、日志字段和退出码见 [使用指南](docs/usage.md)。
+完整配置、环境变量、多文件模式和退出码见 [使用指南](docs/usage.md)。
 
 ## 项目结构
 
 ```text
+ai/            DeepSeek 客户端、结果验证与 API Key 管理
 browser/       浏览器会话与页面导航
-educoder/      作业、关卡、编辑器、评测与流程
+educoder/      作业、题目模板、编辑器、评测与流程
 tests/         单元测试及本地浏览器页面测试
-examples/      可复制的目录和文件映射示例
+examples/      本地代码模式的目录和文件映射示例
 docs/          使用说明、故障排查与开发文档
-scripts/       浏览器诊断工具
-solutions/     用户本地代码（被 Git 忽略）
-logs/          操作结果及代码备份（被 Git 忽略）
+.auth/         本机密钥及登录状态（被 Git 忽略）
+solutions/     可选的本地代码（被 Git 忽略）
+logs/          题目、生成代码及操作结果（被 Git 忽略）
 ```
 
 ## 开发与贡献
-
-GitHub Actions 在 Windows 和 Linux 上运行本地浏览器测试，不使用真实账号或访问课程。Linux 测试用于检查代码和页面适配；桌面工作流以 Windows 为主要支持平台。
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -124,8 +110,12 @@ python -m playwright install chromium
 python -m unittest discover -s tests -v
 ```
 
+GitHub Actions 使用本地页面和模拟 API 验证流程，不使用真实账号或消耗 DeepSeek 额度。测试通过不代表任意线上题目都能通过。Windows 是主要支持平台。
+
 欢迎通过 [Issue](https://github.com/Zyandiel/EduCoder-AutoSubmit/issues) 报告问题或提交 PR。请先阅读 [贡献指南](CONTRIBUTING.md)和 [安全说明](SECURITY.md)。
 
-本项目不提供答案生成服务，不随仓库分发真实课程解答。它与 EduCoder 官方无关联；仅在你有权限的页面使用，验证码和访问验证由用户完成。
+本项目与 EduCoder、DeepSeek 官方无关联；只操作账号已有权限的页面，验证码由用户完成。题目和模板会发送到 DeepSeek，网站密码、Cookie 和 storageState 不发送给模型。仓库不分发真实课程解答。
 
 以 [MIT License](LICENSE) 发布。
+
+从旧版本升级请阅读 [v0.3.0 发布说明](docs/releases/v0.3.0.md)：本版本默认启用 AI，原本地代码流程可通过 `--local` 保留。

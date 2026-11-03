@@ -13,7 +13,7 @@ class RunnerTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config = root / 'config.yaml'
-            config.write_text('course_url: https://www.educoder.net/classrooms/test/shixun_homework\n', encoding='utf-8')
+            config.write_text('course_url: https://www.educoder.net/classrooms/test/shixun_homework\nai: {enabled: false}\n', encoding='utf-8')
             settings = load_settings(config)
             files = settings.solutions_dir / '示例'
             files.mkdir(parents=True)

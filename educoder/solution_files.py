@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from .editor import MonacoEditor, normalize
+from .workspace import select_file
 
 
 def load_files(solution):
@@ -33,18 +34,7 @@ def write_solution(page, solution, folder):
     records = []
     for index, (remote, path, code) in enumerate(prepared):
         if remote is not None:
-            page.bring_to_front()
-            page.mouse.move(0, 0)
-            page.wait_for_timeout(250)
-            trigger = page.locator('[id^="env_"] .ant-dropdown-trigger')
-            if trigger.count() != 1:
-                raise ValueError('未找到唯一的代码文件菜单。')
-            trigger.hover()
-            item = page.get_by_role('menuitem', name=remote, exact=True)
-            item.wait_for(state='visible')
-            item.click()
-            page.locator('.monaco-editor[role="code"]:visible').wait_for(state='visible', timeout=60000)
-            page.wait_for_timeout(700)
+            select_file(page, remote)
         editor = MonacoEditor(page)
         (folder / f'file-{index}-before.txt').write_text(editor.read_code(), encoding='utf-8')
         (folder / f'file-{index}-local.txt').write_text(code, encoding='utf-8')

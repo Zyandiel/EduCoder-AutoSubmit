@@ -4,11 +4,14 @@ import logging
 import os
 from contextlib import contextmanager
 
+import yaml
+
 from playwright.sync_api import Error as PlaywrightError
 from browser.session import browser_session, login
 from educoder.assignments import list_assignments
 from educoder.runner import run_assignments, selected_assignments
 from educoder.solution_files import load_files
+from ai.credentials import get_api_key
 
 
 @contextmanager
@@ -57,12 +60,40 @@ def check_local(settings, names):
     return count
 
 
-def automatic(settings, config_path, *, check_only=False):
+def choose_assignments(settings, config_path, assignments, requested=None):
+    """保留真实详情 URL，避免两个同名实训互相覆盖。"""
+    raw = yaml.safe_load(config_path.read_text(encoding='utf-8'))
+    entries = raw.get('assignments', [])
+    if not isinstance(entries, list):
+        raise ValueError('assignments 必须是列表。')
+    enabled, disabled = set(), set()
+    for item in entries:
+        if (not isinstance(item, dict) or not isinstance(item.get('name'), str)
+                or not item['name'].strip() or type(item.get('enabled', False)) is not bool):
+            raise ValueError('assignments 项需要非空 name 和 enabled 布尔值。')
+        (enabled if item.get('enabled', False) else disabled).add(item['name'])
+    if enabled & disabled:
+        raise ValueError('同一作业名称不能同时启用和禁用。')
+    selected = {requested} if requested else enabled if settings.assignment_scope == 'configured' else None
+    names = {a['name'] for a in assignments}
+    missing = sorted(selected - names) if selected is not None else []
+    wanted = [a for a in assignments if (selected is None and a['name'] not in disabled)
+              or (selected is not None and a['name'] in selected)]
+    return wanted, missing
+
+
+def automatic(settings, config_path, *, check_only=False, requested=None):
     if not settings.dry_run:
         raise ValueError('一键模式暂只支持 dry_run: true，不执行最终提交。')
-    names = selected_assignments(config_path, None)
-    check_local(settings, names)
+    choose_assignments(settings, config_path, [], requested)  # 在打开浏览器前验证过滤配置。
+    if not settings.ai.enabled:
+        names = [requested] if requested else selected_assignments(config_path, None)
+        check_local(settings, names)
     if check_only:
+        if settings.ai.enabled:
+            if not get_api_key(settings.root):
+                raise ValueError('尚未设置 DeepSeek API Key，请双击 START.cmd 或运行 main.py setup。')
+            logging.info('AI 配置及密钥读取正常；无需本地 CPP。未调用 API，未验证余额或密钥有效性。')
         return 0
     with single_run(settings.root):
         if not settings.session_file.exists():
@@ -86,20 +117,24 @@ def automatic(settings, config_path, *, check_only=False):
             logging.error('列表读取不完整，停止自动填写，请查看 logs 和截图。')
             return result
         data = json.loads((settings.root / 'logs/assignments.json').read_text(encoding='utf-8'))
-        by_name = {item['name']: item for item in data['assignments']}
-        missing = [name for name in names if name not in by_name]
-        pending = [name for name in names if name in by_name and by_name[name]['completed'] is not True]
-        completed = [name for name in names if name in by_name and by_name[name]['completed'] is True]
-        extra = [name for name, item in by_name.items() if name not in names and item['completed'] is not True]
+        if data.get('scan_complete') is not True or data.get('course_url') != settings.course_url:
+            raise ValueError('列表读取不完整或属于其他课程，停止运行。')
+        chosen, missing = choose_assignments(settings, config_path, data['assignments'], requested)
+        if not settings.ai.enabled and not requested:
+            chosen = [a for a in chosen if a['name'] in names]
+        pending = [a for a in chosen if a['completed'] is not True and a.get('submission_window_open') is not False]
+        completed = [a for a in chosen if a['completed'] is True]
+        closed = [a for a in chosen if a['completed'] is not True and a.get('submission_window_open') is False]
         summary = {'dry_run': True, 'final_submission': False, 'completed_skipped': completed,
-                   'pending': pending, 'missing_assignments': missing, 'unconfigured': extra}
+                   'pending': pending, 'missing_assignments': missing, 'closed_skipped': closed,
+                   'mode': 'ai' if settings.ai.enabled else 'local'}
         for name in missing:
             logging.warning('课程中没有找到配置作业：%s', name)
-        for name in extra:
-            logging.warning('未启用的未完成作业：%s；需要本地解答和配置后才能处理。', name)
+        for assignment in closed:
+            logging.warning('跳过已截止/归档实训：%s', assignment['name'])
         logging.info('跳过 %s 个已完成实训，开始处理 %s 个未完成实训。', len(completed), len(pending))
         result = run_assignments(settings, pending) if pending else 0
-        result = result or (3 if missing else 0)
+        result = result or (3 if missing or closed else 0)
         summary['exit_code'] = result
         (settings.root / 'logs/auto-summary.json').write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding='utf-8')
         logging.info('一键流程结束，结果见 logs/auto-summary.json。未执行最终提交。')

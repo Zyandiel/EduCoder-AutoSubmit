@@ -4,12 +4,12 @@ title: "[Bug] "
 body:
   - type: markdown
     attributes:
-      value: 请提供脱敏信息，不上传 Cookie、storageState、账号密码或真实解答。
+      value: 请提供脱敏信息，不上传 DeepSeek API Key、Cookie、storageState、账号密码或真实解答。
   - type: textarea
     id: environment
     attributes:
       label: 运行环境
-      description: Windows、Python、浏览器版本与 browser_channel。
+      description: main.py --version 输出、Windows、Python、浏览器版本与 browser_channel；AI 问题附 ai.model 和错误类型，不附 Key。
     validations:
       required: true
   - type: textarea

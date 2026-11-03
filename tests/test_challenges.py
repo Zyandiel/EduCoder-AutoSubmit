@@ -1,15 +1,33 @@
 import unittest
 import os
 import tempfile
+import json
 from pathlib import Path
 from dataclasses import replace
 from browser.session import browser_session
 from configuration import load_settings
-from educoder.challenges import move_to_pending
+from educoder.challenges import find_assignment, move_to_pending
 from educoder.challenges import parse_table, parse_current
 
 
 class ChallengeTests(unittest.TestCase):
+    def test_duplicate_assignment_requires_observed_detail_url(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            config = root / 'config.yaml'
+            course = 'https://www.educoder.net/classrooms/test/shixun_homework'
+            config.write_text(f'course_url: {course}\n', encoding='utf-8')
+            settings = load_settings(config)
+            (root / 'logs').mkdir()
+            urls = [f'{course}/{number}/detail?tabs=1' for number in (1, 2)]
+            (root / 'logs/assignments.json').write_text(json.dumps({'course_url': course,
+                'scan_complete': True, 'assignments': [{'name': '同名', 'url': url} for url in urls]}), encoding='utf-8')
+            with self.assertRaises(ValueError):
+                find_assignment(settings, '同名')
+            self.assertEqual(find_assignment(settings, '同名', detail_url=urls[1]), urls[1])
+            with self.assertRaises(ValueError):
+                find_assignment(settings, '同名', detail_url=f'{course}/999/detail')
+
     def test_browser_moves_both_directions_and_rejects_unknown(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

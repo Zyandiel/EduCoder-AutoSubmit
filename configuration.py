@@ -1,9 +1,12 @@
 """配置读取；相对路径以配置文件所在目录为基准。"""
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+import re
 from urllib.parse import urlparse
 
 import yaml
+
+from ai.client import AiOptions
 
 
 def default_config(root: Path) -> Path:
@@ -18,6 +21,9 @@ def default_config(root: Path) -> Path:
 def require_course(settings) -> None:
     if any(token in settings.course_url for token in ("YOUR_COURSE_ID", "/xxxx/")):
         raise ValueError("请先将本地配置的 course_url 替换为真实课程地址。")
+    parsed = urlparse(settings.course_url)
+    if parsed.netloc != 'www.educoder.net' or not re.fullmatch(r'/classrooms/[A-Za-z0-9_-]+/shixun_homework/?', parsed.path):
+        raise ValueError('course_url 必须是课程的实训作业页面地址。')
 
 
 @dataclass(frozen=True)
@@ -32,6 +38,8 @@ class Settings:
     browser_channel: str
     navigation_timeout_ms: int
     action_timeout_ms: int
+    ai: AiOptions = field(default_factory=AiOptions)
+    assignment_scope: str = "all"
 
 
 def load_settings(path: Path) -> Settings:
@@ -44,6 +52,25 @@ def load_settings(path: Path) -> Settings:
         raise ValueError("YAML 格式错误，请检查缩进及冒号。") from exc
     if not isinstance(data, dict):
         raise ValueError("配置文件必须是 YAML 对象。")
+    ai = data.get("ai", {})
+    if not isinstance(ai, dict):
+        raise ValueError("ai 必须是 YAML 对象。")
+    if type(ai.get("enabled", True)) is not bool:
+        raise ValueError("ai.enabled 必须是 true 或 false。")
+    model = ai.get("model", "deepseek-flash")
+    if not isinstance(model, str) or not model.strip() or len(model) > 100:
+        raise ValueError("ai.model 必须是非空模型名称。")
+    bounds = {"timeout_seconds": (180, 10, 600), "max_tokens": (16000, 256, 64000),
+              "max_calls_per_run": (100, 1, 1000), "max_context_chars": (160000, 1000, 1000000)}
+    for key, (default, minimum, maximum) in bounds.items():
+        value = ai.get(key, default)
+        if type(value) is not int or not minimum <= value <= maximum:
+            raise ValueError(f"ai.{key} 必须是 {minimum} 到 {maximum} 的整数。")
+    if "api_key" in ai:
+        raise ValueError("请使用 main.py setup 加密保存 API Key，或设置 DEEPSEEK_API_KEY，不要写入 YAML。")
+    scope = data.get("assignment_scope", "all")
+    if scope not in ("all", "configured"):
+        raise ValueError("assignment_scope 必须是 all 或 configured。")
     for key in ("dry_run", "debug", "headless"):
         if key in data and not isinstance(data[key], bool):
             raise ValueError(f"{key} 必须是 true 或 false，不能加引号。")
@@ -74,4 +101,7 @@ def load_settings(path: Path) -> Settings:
         browser_channel=channel,
         navigation_timeout_ms=data.get("navigation_timeout_ms", 60000),
         action_timeout_ms=data.get("action_timeout_ms", 15000),
+        ai=AiOptions(enabled=ai.get("enabled", True), model=model,
+                     **{key: ai.get(key, default) for key, (default, _, _) in bounds.items()}),
+        assignment_scope=scope,
     )

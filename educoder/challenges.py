@@ -36,7 +36,7 @@ def parse_table(headers, rows):
     return result
 
 
-def find_assignment(settings, name):
+def find_assignment(settings, name, *, detail_url=None):
     path = settings.root / 'logs/assignments.json'
     if not path.exists():
         raise ValueError('请先运行 list 生成作业链接。')
@@ -44,6 +44,8 @@ def find_assignment(settings, name):
     if report.get('course_url') != settings.course_url or report.get('scan_complete') is not True:
         raise ValueError('列表属于其他课程或读取不完整，请重新运行 list。')
     matches = [a for a in report.get('assignments', []) if a.get('name') == name]
+    if detail_url is not None:
+        matches = [a for a in matches if a.get('url') == detail_url]
     if len(matches) != 1:
         raise ValueError('作业名称不存在或不唯一，请使用 list 中的完整名称。')
     url = matches[0].get('url')
@@ -95,8 +97,8 @@ def move_to_pending(page, info, directory):
     raise ValueError('无法定位待处理关卡。')
 
 
-def inspect_assignment(context, page, settings, name, *, enter=False, export_html=False):
-    navigate(page, find_assignment(settings, name), settings)
+def inspect_assignment(context, page, settings, name, *, enter=False, export_html=False, detail_url=None):
+    navigate(page, find_assignment(settings, name, detail_url=detail_url), settings)
     page.get_by_text(name, exact=True).first.wait_for(timeout=settings.navigation_timeout_ms)
     table = page.locator('table').filter(has=page.get_by_role('columnheader', name='关卡名称', exact=True))
     table.locator('tbody tr.ant-table-row').first.wait_for(timeout=settings.navigation_timeout_ms)
@@ -134,11 +136,16 @@ def inspect_assignment(context, page, settings, name, *, enter=False, export_htm
         if editor.count() != 1:
             raise ValueError('存在多个 Monaco 编辑器，不能确定目标。')
         # 只报告 DOM 类型；不把编辑器内部 textarea 当作代码写入接口。
-        solution = (settings.solutions_dir / name / f'{current.number}.cpp').resolve()
+        # AI 模式不依赖课程名称作为 Windows 文件名（名称可能包含冒号等字符）。
+        directory = settings.solutions_dir / '_generated' if settings.ai.enabled else settings.solutions_dir / name
+        solution = (directory / f'{current.number}.cpp').resolve()
         if not solution.is_relative_to(settings.solutions_dir.resolve()):
             raise ValueError('作业名称对应的本地路径超出了 solutions 目录。')
         result['current'] = {**asdict(current), 'url': target.url, 'editor': 'Monaco', 'solution_path': str(solution), 'solution_exists': solution.is_file()}
-        print(f'当前第{current.number}关，编辑器：Monaco；本地文件：{solution}（{"存在" if solution.is_file() else "尚未提供"}）')
+        if settings.ai.enabled:
+            print(f'当前第{current.number}关，编辑器：Monaco；AI 模式无需预先准备本地文件。')
+        else:
+            print(f'当前第{current.number}关，编辑器：Monaco；本地文件：{solution}（{"存在" if solution.is_file() else "尚未提供"}）')
         page = target
     if settings.debug:
         snapshot(page, settings.root, 'assignment-inspection')

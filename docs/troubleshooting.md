@@ -1,41 +1,65 @@
 # 常见问题
 
+## 还需要先写 CPP 文件吗？
+
+默认 AI 模式不需要。双击 `START.cmd`，配置 DeepSeek API Key、登录并选择课程后，程序读取题目和模板自动生成代码。只有显式使用 `--local` 或设置 `ai.enabled: false` 才需要本地文件。
+
 ## 找不到 `.venv\Scripts\python.exe`
 
-先进入项目目录。首次双击 `START.cmd` 会创建环境；事先安装 Python 3.11+。PowerShell 使用 `Get-Location` 查看当前位置。
+先进入项目目录。首次双击 `START.cmd` 会创建环境；事先安装 Python 3.11+。PowerShell 可使用 `Get-Location` 确认当前路径。
 
-## 首次启动只生成配置
+## 已有旧配置，怎样切换 AI 模式？
 
-这是初始化流程。编辑 `config.local.yaml` 的课程地址和 `assignments`，把代码放入 `solutions/` 后再运行。需要准确名称时先登录并执行 `list`。
+保留课程地址，运行 `python main.py setup` 配置 Key，再运行 `python main.py start`。默认处理所有未完成作业；若配置了 `assignment_scope: configured`，请改为 `all`。检查是否显式设置 `ai.enabled: false` 或将需要处理的作业设为 `enabled: false`。
+
+## API Key 输入时没有显示字符
+
+这是正常的隐藏输入。粘贴后按 Enter，不需要把 Key 写进 YAML。Windows 本机保存使用当前用户的 DPAPI；复制加密文件到另一台机器或另一个 Windows 账号后，需要重新运行 `setup`。
+
+## API Key 无效、额度不足或限流
+
+检查 DeepSeek 控制台的 API Key 与余额。环境变量 `DEEPSEEK_API_KEY` 优先于本机密钥；若变量中仍是旧值，重新运行 `setup` 不会覆盖该变量。401 通常为鉴权问题，402 为额度问题，429 为限流。程序不会高频重试请求，解决原因后重新启动。
+
+`auto --check` 不发送请求，只验证本机配置和 Key 能否读取，不能证明 Key 有效或余额充足。
+
+## 模型返回空内容、JSON 错误或生成被截断
+
+检查模型是否支持 JSON 输出、网络及 `ai.max_tokens` 设置。程序拒绝不完整输出，不把损坏的 JSON 当作代码粘贴。单次请求超时可按需要增加 `ai.timeout_seconds`，达到运行调用上限可调整 `ai.max_calls_per_run`。这些设置可能增加等待时间或费用。
 
 ## 浏览器未安装或启动失败
 
-确认 `browser_channel` 对应浏览器存在：`chrome` 需要 Chrome，`msedge` 需要 Edge。选择 `chromium` 后执行 `python -m playwright install chromium`。启动器安装 Python 依赖，但不会安装 Chrome。
+`START.cmd` 会检测 Chrome/Edge，缺少可用浏览器时安装 Playwright Chromium，不会安装 Chrome 本身。下载失败时检查网络，也可先运行 `python -m playwright install chromium`。直接执行 `auto` 会使用配置指定的浏览器。
 
 ## 会话失效、登录页或验证码
 
-双击 `LOGIN.cmd`，或执行 `python main.py login --fresh`，手动完成验证，确认身份后输入 `save`。保存文件存在不证明会话仍有效。程序不绕过权限或验证页面。
+双击 `LOGIN.cmd`，或运行 `python main.py login --fresh`，手动完成验证，确认身份后输入 `save`。保存文件存在不证明会话仍有效。程序不会绕过权限或验证页面。
 
-## 找不到按钮、编辑器或关卡
+## 找不到按钮、编辑器、文件菜单或关卡
 
-先手动确认页面可访问，检查 `debug/screenshots/`。当前适配已核实的 Monaco DOM；改版或其他编辑器会报错。开启 `debug: true` 并用 `inspect` 收集脱敏信息，不盲目改 selector 或发送含凭据的完整 HTML。
+先手动确认页面可访问，再检查 `debug/screenshots/`。当前适配已核实的 Monaco DOM；改版或其他编辑器会报错。开启 `debug: true`，用 `inspect` 收集脱敏信息；不要盲目修改 selector 或发送含凭据的完整 HTML。
 
-## 文件缺失或映射错误
+多文件工作区需要确认文件切换后的编辑器模型确实改变；无法确认当前文件时会停止该实训。公开标准 Monaco API 的页面可读取空模板；未公开 API 且空模板无法复制时会明确报错，不把复制失败当作空代码。
 
-目录名与实训名称完全一致，文件名为 `1.cpp`、`2.cpp` 等。`.files.json` 左侧路径与网站菜单一致，右侧文件位于实训目录内。先执行 `auto --check`。
+## 题目要求“根据本书……”或没有完整文字
+
+模型只能使用网页中已读取的题目与模板。缺少教材定义、图表或必要条件时，生成结果可能无法确定。检查运行记录中的题目内容，补充上下文后再处理；程序不会通过解锁受限参考答案来补全信息。
+
+## 本地模式文件缺失或映射错误
+
+目录名须与实训名称一致，文件名为 `1.cpp`、`2.cpp` 等。`.files.json` 左侧路径须与网页菜单一致，右侧文件位于实训目录内。先执行 `auto --local --check` 检查。
 
 ## 写入后代码不一致
 
-运行期间避免使用剪贴板、切换在线文件或编辑该浏览器。程序通过 Monaco 操作和剪贴板回读校验；不一致时不会评测。不同布局可能需要适配。
+运行期间避免使用剪贴板、切换在线文件或编辑自动化浏览器。程序通过正常键盘操作与剪贴板回读完整代码；不一致时不会评测。
 
 ## 评测失败或超时
 
-检查 `logs/run-*/report.json` 和对应代码备份、结果文本。评测不会自动重试；先人工排查框架、编译错误、网络与测试结果。dry-run 的评测同样影响平台进度。
+检查 `logs/run-*/report.json`、生成代码和对应结果文本。AI 代码可能有误，页面也可能超时。本次运行每关只评测一次；程序记录失败并继续其他作业，修正问题后可以再次启动。dry-run 的评测同样影响平台进度。
 
 ## 提示已有任务运行
 
-等待前一个流程结束。锁由进程持有，退出后自动释放；`auto.lock` 文件存在本身不代表被占用。避免开启多个自动化流程。
+等待前一个流程结束。锁由进程持有，退出后自动释放；`auto.lock` 文件存在本身不代表被占用。避免同时开启多个流程。
 
-## 最终提交或新题答案
+## 已通过为什么没有“提交作业”？
 
-当前自动处理已准备的本地代码，最终提交入口尚未开放。新题需要增加解答并启用配置。已完成关卡会跳过。
+当前程序自动填写和评测，最终“提交作业”入口仍未开放。平台可能在评测后直接更新关卡完成状态；如课程另有最终提交步骤，请在网页确认并处理。

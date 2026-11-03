@@ -24,14 +24,14 @@ class AutoTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             config = root / 'config.yaml'
-            config.write_text('course_url: https://www.educoder.net/classrooms/test/shixun_homework\nassignments:\n  - {name: done, enabled: true}\n  - {name: todo, enabled: true}\n', encoding='utf-8')
+            config.write_text('course_url: https://www.educoder.net/classrooms/test/shixun_homework\nassignment_scope: configured\nai: {enabled: false}\nassignments:\n  - {name: done, enabled: true}\n  - {name: todo, enabled: true}\n', encoding='utf-8')
             settings = load_settings(config)
             settings.session_file.parent.mkdir(parents=True)
             settings.session_file.write_text('{}')
             (root / 'logs').mkdir()
             cache = root / 'logs/assignments.json'
             for completed in (False, True):
-                cache.write_text(json.dumps({'assignments': [
+                cache.write_text(json.dumps({'course_url': settings.course_url, 'scan_complete': True, 'assignments': [
                     {'name': 'done', 'completed': True},
                     {'name': 'todo', 'completed': completed},
                     {'name': 'disabled', 'completed': False}]}))
@@ -41,7 +41,7 @@ class AutoTests(unittest.TestCase):
                     if completed:
                         run.assert_not_called()
                     else:
-                        run.assert_called_once_with(settings, ['todo'])
+                        run.assert_called_once_with(settings, [{'name': 'todo', 'completed': False}])
             with patch('educoder.auto.browser_session') as browser:
                 with self.assertRaises(ValueError):
                     automatic(replace(settings, dry_run=False), config)

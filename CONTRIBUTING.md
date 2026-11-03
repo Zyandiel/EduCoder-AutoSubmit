@@ -4,7 +4,7 @@
 
 ## 报告问题
 
-使用 Bug Report 模板，提供系统、Python、浏览器版本、复现命令和预期/实际结果。附上脱敏日志或局部 DOM，不提交密码、Cookie、storageState、真实解答或身份信息。
+使用 Bug Report 模板，提供 `python main.py --version` 输出、系统、Python、浏览器版本、复现命令和预期/实际结果。AI 问题附模型名及错误类型；附上脱敏日志或局部 DOM，不提交 API Key、密码、Cookie、storageState、真实解答或身份信息。
 
 页面适配问题说明入口、编辑器类型、按钮文字和已观察到的结构。无法取得 DOM 时不凭名称猜 selector。
 

@@ -1,6 +1,7 @@
 """Windows 入口：python main.py login。"""
 import argparse
 import logging
+from dataclasses import replace
 from pathlib import Path
 
 from playwright.sync_api import Error as PlaywrightError
@@ -11,15 +12,21 @@ from configuration import default_config, load_settings, require_course
 from diagnostics import configure_logging, snapshot
 from educoder.assignments import list_assignments
 from educoder.challenges import inspect_assignment
-from educoder.runner import run_assignments, selected_assignments
 from educoder.auto import automatic
+from onboarding import initialize_config, prepare_start
+from version import __version__
 
 
 def parser():
-    result = argparse.ArgumentParser(description="EduCoder Helper：本地代码填写、回读校验与单次评测")
+    result = argparse.ArgumentParser(description="EduCoder Helper：DeepSeek 自动解题、代码回读校验与单次评测")
+    result.add_argument("--version", action="version", version=f"EduCoder Helper {__version__}")
     result.add_argument("--config", type=Path, default=default_config(Path(__file__).resolve().parent), help="配置路径（默认优先 config.local.yaml，兼容 config.yaml）")
     commands = result.add_subparsers(dest="command", required=True)
     commands.add_parser("init", help="从示例创建本地配置，不覆盖已有文件")
+    start = commands.add_parser("start", help="首次设置 API Key 和课程，然后自动解题；Windows 一键入口")
+    start.add_argument("--check", action="store_true", help="只检查现有配置和密钥，不启动向导或浏览器")
+    start.add_argument("--assignment", help="只处理指定名称的实训")
+    commands.add_parser("setup", help="设置或更换 DeepSeek API Key，并补全首次课程设置")
     auth = commands.add_parser("login", help="手动登录并保存会话")
     auth.add_argument("--fresh", action="store_true", help="忽略旧会话，重新手动登录")
     inspect = commands.add_parser("inspect", help="恢复会话，手动检查课程页面并保存截图")
@@ -27,12 +34,15 @@ def parser():
     inspect.add_argument("--assignment", help="读取指定作业详情中的关卡")
     inspect.add_argument("--enter", action="store_true", help="进入实训识别当前关卡和编辑器，不写入或评测；须同时指定 --assignment")
     commands.add_parser("list", help="读取全部列表分页及实际作业详情链接，保存 logs/assignments.json")
-    run = commands.add_parser("run", help="填写本地代码、完整回读校验并单次评测；最终提交暂未开放")
+    run = commands.add_parser("run", help="自动生成代码、完整回读校验并单次评测；最终提交暂未开放")
     run.add_argument("--assignment")
     run.add_argument("--dry-run", action="store_true")
+    run.add_argument("--local", action="store_true", help="使用现有本地代码，不调用 DeepSeek")
     commands.add_parser("submit", help="保留入口：最终提交尚未开放，退出码 2")
-    auto = commands.add_parser('auto', help='一键恢复登录、刷新列表、自动填写并评测本地解答')
-    auto.add_argument('--check', action='store_true', help='只检查本地配置与解答，不打开网站')
+    auto = commands.add_parser('auto', help='恢复登录、刷新所有分页、自动生成并评测解答')
+    auto.add_argument('--check', action='store_true', help='只检查配置与密钥，不打开网站或调用 API')
+    auto.add_argument('--assignment')
+    auto.add_argument('--local', action='store_true', help='使用现有本地代码，不调用 DeepSeek')
     return result
 
 
@@ -49,19 +59,32 @@ def main(argv=None):
                 with target.open("x", encoding="utf-8") as stream:
                     stream.write(template)
                 print(f"已创建：{target}")
-            print("填写 course_url、启用 assignments，并准备 solutions 中的本地代码后再运行。")
+            print("运行 python main.py start：设置 DeepSeek API Key、登录并选择课程后自动解题。")
             return 0
+        if args.command == "setup" or (args.command == "start" and not args.check):
+            initialize_config(args.config)
+            configure_logging(args.config.resolve().parent, True)
+            settings = prepare_start(args.config, reset_key=args.command == "setup")
+            configure_logging(settings.root, settings.debug)
+            if args.command == "setup":
+                print("设置完成，下次双击 START.cmd 即可自动解题。")
+                return 0
+            return automatic(settings, args.config, requested=args.assignment)
         settings = load_settings(args.config)
+        if getattr(args, "local", False):
+            settings = replace(settings, ai=replace(settings.ai, enabled=False))
+        if getattr(args, "dry_run", False):
+            settings = replace(settings, dry_run=True)
         configure_logging(settings.root, settings.debug)
         logging.info("dry_run=%s, debug=%s", settings.dry_run or getattr(args, "dry_run", False), settings.debug)
-        if args.command in ("list", "run", "inspect") or (args.command == "auto" and not args.check):
+        if args.command in ("list", "run", "inspect") or (args.command in ("auto", "start") and not args.check):
             require_course(settings)
-        if args.command == 'auto':
-            return automatic(settings, args.config, check_only=args.check)
+        if args.command in ('auto', 'start'):
+            return automatic(settings, args.config, check_only=args.check, requested=args.assignment)
         if args.command == 'run':
             if not (settings.dry_run or args.dry_run):
                 raise ValueError('最终提交尚未实现，请使用 --dry-run 或保持 dry_run: true。')
-            return run_assignments(settings, selected_assignments(args.config, args.assignment))
+            return automatic(settings, args.config, requested=args.assignment)
         if args.command == "submit":
             logging.error("%s 尚未实现：最终提交入口和条件尚未验证。未执行任何提交。", args.command)
             return 2
